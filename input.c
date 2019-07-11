@@ -2140,7 +2140,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	size_t			 len = ictx->input_len;
 	const char		 pt_prefix[] = "tmux;";     /* passthrough prefix */
 	const char		 sv_prefix[] = "tmux:set;"; /* setvar prefix */
-	const char		 name_prefix[] = "@dcs_";   /* variable name prefix */
+	const char		 name_prefix[] = "@dcs.";   /* variable name prefix */
 
 #define slen(x) (sizeof(x)-1)
 
