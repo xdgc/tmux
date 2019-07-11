@@ -2138,16 +2138,41 @@ input_dcs_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	*sctx = &ictx->ctx;
 	u_char			*buf = ictx->input_buf;
 	size_t			 len = ictx->input_len;
-	const char		 prefix[] = "tmux;";
-	const u_int		 prefixlen = (sizeof prefix) - 1;
+	const char		 pt_prefix[] = "tmux;";     /* passthrough prefix */
+	const char		 sv_prefix[] = "tmux:set;"; /* setvar prefix */
+	const char		 name_prefix[] = "@dcs_";   /* variable name prefix */
+
+#define slen(x) (sizeof(x)-1)
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
 
 	log_debug("%s: \"%s\"", __func__, buf);
 
-	if (len >= prefixlen && strncmp(buf, prefix, prefixlen) == 0)
-		screen_write_rawstring(sctx, buf + prefixlen, len - prefixlen);
+	if (len >= slen(pt_prefix) && strncmp(buf, pt_prefix, slen(pt_prefix)) == 0)
+		screen_write_rawstring(sctx, buf + slen(pt_prefix), len - slen(pt_prefix));
+
+	if (len >= slen(sv_prefix) && strncmp(buf, sv_prefix, slen(sv_prefix)) == 0) {
+		u_char *workspace = NULL;
+		u_char *name = NULL;
+		u_char *value = NULL;
+
+#define worklen (strlen(buf) - slen(sv_prefix) + slen(name_prefix))
+		name = workspace = xmalloc(worklen+1);
+		snprintf(workspace, worklen+1, "%s%s", name_prefix,
+		         buf + slen(sv_prefix));
+		value = strchr(workspace, '=');
+		if (value == NULL) {
+			log_debug("%s: %s without '=': \"%s\"", __func__, sv_prefix, buf);
+			free(workspace);
+			return (0);
+		}
+
+		*value++ = '\0';
+		log_debug("%s: set \"%s\" = \"%s\"", __func__, name, value);
+		options_set_string(global_s_options, name, 0, "%s", value);
+		free(workspace);
+	}
 
 	return (0);
 }
